@@ -4,6 +4,7 @@ import joblib
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder
 from io import StringIO
 
 # Initialize FastAPI app
@@ -58,11 +59,24 @@ async def retrain(file: UploadFile = File(...)):
         # Ensure the columns match your original training data
         # Example preprocessing steps (you might need to adjust these)
         df = df.dropna()  # Drop missing values
+
+        # Check if 'RiskLevel' column exists
+        if 'RiskLevel' in df.columns:
+            # Convert the 'RiskLevel' names into numerical labels (e.g., 'low risk' -> 0, 'mid risk' -> 1, 'high risk' -> 2)
+            label_encoder = LabelEncoder()
+            df['RiskLevel'] = label_encoder.fit_transform(df['RiskLevel'])
+        else:
+            return {"error": "'RiskLevel' column is missing in the dataset."}
+
+        # Split data into features (X) and target (y)
         X = df.drop('RiskLevel', axis=1)  # Replace 'RiskLevel' with the actual target column name
-        y = df['RiskLevel']  # Replace 'RiskLevel' with the actual target column name
+        y = df['RiskLevel']  # The target variable
+
+        # Apply scaling (use the same scaler that was used in training)
+        X_scaled = scaler.transform(X)
 
         # Retrain the model (you should use the same model you initially trained, e.g., XGBoost)
-        retrained_model = retrain_model(X, y)
+        retrained_model = retrain_model(X_scaled, y)
 
         # Save the retrained model
         joblib.dump(retrained_model, 'models/xgb_maternal_health.pkl')
