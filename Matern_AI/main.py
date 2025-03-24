@@ -5,29 +5,28 @@ import numpy as np
 import os
 import joblib
 
-# Load model safely
-MODEL_PATH = os.getenv("MODEL_PATH", "xgb_maternal_health.model")
-SCALER_PATH = os.getenv("SCALER_PATH", "scaler.pkl")
+# Ensure model and scaler paths are correct
+MODEL_PATH = os.getenv("MODEL_PATH", "models/xgb_maternal_health.model")
+SCALER_PATH = os.getenv("SCALER_PATH", "models/scaler.pkl")
 
+# Validate model and scaler existence
 if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Model file not found at: {MODEL_PATH}")
+    raise FileNotFoundError(f"🔴 Model file not found at: {MODEL_PATH}")
 
 if not os.path.exists(SCALER_PATH):
-    raise FileNotFoundError(f"Scaler file not found at: {SCALER_PATH}")
+    raise FileNotFoundError(f"🔴 Scaler file not found at: {SCALER_PATH}")
 
+# Load model and scaler with error handling
 try:
     with open(MODEL_PATH, "rb") as model_file:
         model = pickle.load(model_file)
-    scaler = joblib.load(SCALER_PATH)  # Load the scaler
+    scaler = joblib.load(SCALER_PATH)  
+    print("✅ Model and scaler loaded successfully!")
 except Exception as e:
-    raise RuntimeError(f"Error loading model or scaler: {e}")
+    raise RuntimeError(f"🚨 Error loading model or scaler: {e}")
 
 # Define class mapping
-CLASS_MAPPING = {
-    0: "Low Risk",
-    1: "Medium Risk",
-    2: "High Risk"
-}
+CLASS_MAPPING = {0: "Low Risk", 1: "Medium Risk", 2: "High Risk"}
 
 # Define expected feature names
 FEATURE_NAMES = ["Age", "Systolic_BP", "Diastolic_BP", "Blood_Sugar", "Body_Temperature", "Heart_Rate"]
