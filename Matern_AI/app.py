@@ -1,0 +1,84 @@
+from fastapi import FastAPI, UploadFile, File
+from pydantic import BaseModel
+import joblib
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from io import StringIO
+
+# Initialize FastAPI app
+app = FastAPI()
+
+# Load the saved model and scaler (ensure the model and scaler are in the 'models/' folder)
+model = joblib.load('models/xgb_maternal_health.pkl')
+scaler = joblib.load('models/scaler.pkl')  # Load the scaler used during training
+
+# Define input data model for prediction
+class PredictionRequest(BaseModel):
+    Age: float
+    Systolic_BP: float
+    Diastolic_BP: float
+    Blood_Sugar: float
+    Body_Temperature: float
+    Heart_Rate: float
+
+# Route for model prediction
+@app.post("/predict")
+async def predict(request: PredictionRequest):
+    try:
+        # Convert input data into a DataFrame for the model
+        data = pd.DataFrame([request.dict()])
+
+        # Preprocess input data (assuming you used scaling in your pipeline)
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(data)  # Adjust scaling as per your pipeline
+
+        # Make prediction
+        prediction = model.predict(scaled_data)
+
+        # Convert the numerical prediction to a human-readable format (if needed)
+        risk_labels = {2: "High Risk", 1: "Mid Risk", 0: "Low Risk"}
+        predicted_risk = risk_labels[prediction[0]]
+
+        return {"prediction": predicted_risk}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# Route for retraining the model
+@app.post("/retrain")
+async def retrain(file: UploadFile = File(...)):
+    try:
+        # Read the uploaded CSV file into a DataFrame
+        contents = await file.read()
+        csv_data = StringIO(contents.decode('utf-8'))
+        df = pd.read_csv(csv_data)
+
+        # Ensure the columns match your original training data
+        # Example preprocessing steps (you might need to adjust these)
+        df = df.dropna()  # Drop missing values
+        X = df.drop('RiskLevel', axis=1)  # Replace 'RiskLevel' with the actual target column name
+        y = df['RiskLevel']  # Replace 'RiskLevel' with the actual target column name
+
+        # Retrain the model (you should use the same model you initially trained, e.g., XGBoost)
+        retrained_model = retrain_model(X, y)
+
+        # Save the retrained model
+        joblib.dump(retrained_model, 'models/xgb_maternal_health.pkl')
+        joblib.dump(scaler, 'models/scaler.pkl')  # Save the scaler too
+
+        return {"message": "Model retrained successfully"}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+def retrain_model(X, y):
+    """Function to retrain the XGBoost model."""
+    from xgboost import XGBClassifier
+    model = XGBClassifier(eval_metric='mlogloss')
+    
+    # Fit the model with the provided data
+    model.fit(X, y)
+    
+    return model
