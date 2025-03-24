@@ -1,25 +1,24 @@
-import joblib
 import pandas as pd
+import joblib
 
-def make_prediction(model_path, scaler_path, sample):
-    """
-    Loads the trained model and scaler to make predictions on a new sample.
-
-    Args:
-        model_path (str): Path to the saved model file.
-        scaler_path (str): Path to the saved scaler file.
-        sample (list): Feature values for a single sample.
-
-    Returns:
-        str: Predicted risk level.
-    """
+def make_prediction(model_path, scaler_path, feature_names, sample):
+    """Loads the trained model and makes predictions."""
+    
+    # Load model and scaler
     model = joblib.load(model_path)
     scaler = joblib.load(scaler_path)
 
-    sample_df = pd.DataFrame([sample], columns=scaler.feature_names_in_)
+    # Convert sample to DataFrame with column names
+    sample_df = pd.DataFrame([sample], columns=feature_names)
+    
+    # Scale the sample
     sample_scaled = scaler.transform(sample_df)
 
+    # Make prediction
     predicted_label = model.predict(sample_scaled)[0]
 
+    # Convert numerical prediction to readable label
     risk_labels = {2: "High Risk", 1: "Mid Risk", 0: "Low Risk"}
-    return risk_labels[predicted_label]
+    predicted_risk = risk_labels[predicted_label]
+
+    return predicted_risk
