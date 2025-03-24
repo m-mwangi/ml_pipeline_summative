@@ -3,31 +3,34 @@ from pydantic import BaseModel
 import pickle
 import numpy as np
 import os
+import joblib
 
 # Load model safely
-MODEL_PATH = os.getenv("MODEL_PATH", "xgb_maternal_health.model")  # Allow override via env var
+MODEL_PATH = os.getenv("MODEL_PATH", "xgb_maternal_health.model")
+SCALER_PATH = os.getenv("SCALER_PATH", "scaler.pkl")
 
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError(f"Model file not found at: {MODEL_PATH}")
 
+if not os.path.exists(SCALER_PATH):
+    raise FileNotFoundError(f"Scaler file not found at: {SCALER_PATH}")
+
 try:
     with open(MODEL_PATH, "rb") as model_file:
         model = pickle.load(model_file)
+    scaler = joblib.load(SCALER_PATH)  # Load the scaler
 except Exception as e:
-    raise RuntimeError(f"Error loading model: {e}")
+    raise RuntimeError(f"Error loading model or scaler: {e}")
 
-# Define class mapping (adjust based on your dataset)
+# Define class mapping
 CLASS_MAPPING = {
     0: "Low Risk",
     1: "Medium Risk",
     2: "High Risk"
 }
 
-# Define expected feature names (Adjust based on dataset)
-FEATURE_NAMES = [
-    "Age", "Systolic BP", "Diastolic BP", "Blood Sugar", 
-    "Body Temperature", "Heart Rate"
-]
+# Define expected feature names
+FEATURE_NAMES = ["Age", "Systolic_BP", "Diastolic_BP", "Blood_Sugar", "Body_Temperature", "Heart_Rate"]
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -43,7 +46,7 @@ class PredictionInput(BaseModel):
 
 @app.get("/")
 def home():
-    return {"message": "Welcome to the Maternal Prediction API!"}
+    return {"message": "Welcome to the Maternal Health Risk Prediction API!"}
 
 @app.get("/features")
 def get_features():
@@ -69,11 +72,15 @@ def predict(data: PredictionInput):
             data.Blood_Sugar, data.Body_Temperature, data.Heart_Rate
         ]).reshape(1, -1)
 
-        numeric_prediction = model.predict(features)[0]  # Extract single value
-        
+        # Apply scaling
+        features_scaled = scaler.transform(features)
+
+        # Make prediction
+        numeric_prediction = model.predict(features_scaled)[0]
+
         # Convert numeric prediction to human-readable label
         readable_prediction = CLASS_MAPPING.get(numeric_prediction, "Unknown Risk Level")
-        
+
         return {"prediction": readable_prediction}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")
