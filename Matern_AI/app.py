@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 import joblib
 import pandas as pd
+import os
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import LabelEncoder
@@ -10,9 +11,21 @@ from io import StringIO
 # Initialize FastAPI app
 app = FastAPI()
 
+
+# Get absolute paths for the model and scaler files
+base_dir = os.path.dirname(__file__)  # Get the directory where app.py is located
+model_path = os.path.join(base_dir, 'models', 'xgb_maternal_health.pkl')
+scaler_path = os.path.join(base_dir, 'models', 'scaler.pkl')
+
+# Check if model and scaler files exist
+if not os.path.exists(model_path) or not os.path.exists(scaler_path):
+    logging.error(f"Model or scaler files are missing! Model path: {model_path}, Scaler path: {scaler_path}")
+
 # Load the saved model and scaler (ensure the model and scaler are in the 'models/' folder)
-model = joblib.load('models/xgb_maternal_health.pkl')
-scaler = joblib.load('models/scaler.pkl')  # Load the scaler used during training
+model = joblib.load(model_path)
+scaler = joblib.load(scaler_path)  # Load the scaler used during training
+
+
 
 # Define input data model for prediction
 class PredictionRequest(BaseModel):
