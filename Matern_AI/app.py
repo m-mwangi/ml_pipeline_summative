@@ -36,6 +36,10 @@ class PredictionRequest(BaseModel):
     Body_Temperature: float
     Heart_Rate: float
 
+@app.get("/")
+async def read_root():
+    return {"message": "Welcome to the Matern_AI Health Prediction app!"}
+
 # Route for model prediction
 @app.post("/predict")
 async def predict(request: PredictionRequest):
