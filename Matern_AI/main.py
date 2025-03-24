@@ -1,34 +1,39 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import pickle
 import numpy as np
 import os
 import joblib
 
 # Ensure model and scaler paths are correct
-MODEL_PATH = os.getenv("MODEL_PATH", "models/xgb_maternal_health.model")
+MODEL_PATH = os.getenv("MODEL_PATH", "models/xgb_maternal_health.pkl")
 SCALER_PATH = os.getenv("SCALER_PATH", "models/scaler.pkl")
 
-# Validate model and scaler existence
+# Load model safely
 if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"🔴 Model file not found at: {MODEL_PATH}")
+    raise FileNotFoundError(f" Model file not found at: {MODEL_PATH}")
 
-if not os.path.exists(SCALER_PATH):
-    raise FileNotFoundError(f"🔴 Scaler file not found at: {SCALER_PATH}")
-
-# Load model and scaler with error handling
 try:
-    with open(MODEL_PATH, "rb") as model_file:
-        model = pickle.load(model_file)
-    scaler = joblib.load(SCALER_PATH)  
-    print("✅ Model and scaler loaded successfully!")
+    model = joblib.load(MODEL_PATH)
+    print("Model loaded successfully!")
 except Exception as e:
-    raise RuntimeError(f"🚨 Error loading model or scaler: {e}")
+    raise RuntimeError(f"Error loading model: {e}")
+
+# Load scaler (optional)
+if os.path.exists(SCALER_PATH):
+    try:
+        scaler = joblib.load(SCALER_PATH)
+        print("Scaler loaded successfully!")
+    except Exception as e:
+        print(f"Warning: Scaler loading failed, using raw inputs. Error: {e}")
+        scaler = None
+else:
+    print("Warning: Scaler file not found. Using raw inputs.")
+    scaler = None
 
 # Define class mapping
 CLASS_MAPPING = {0: "Low Risk", 1: "Medium Risk", 2: "High Risk"}
 
-# Define expected feature names
+# Feature names (ensure correct order)
 FEATURE_NAMES = ["Age", "Systolic_BP", "Diastolic_BP", "Blood_Sugar", "Body_Temperature", "Heart_Rate"]
 
 # Initialize FastAPI app
@@ -62,22 +67,25 @@ def get_features():
         }
     }
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint for monitoring."""
+    return {"status": "API is running", "model_loaded": model is not None}
+
 @app.post("/predict")
 def predict(data: PredictionInput):
     try:
-        # Convert named features to array format
-        features = np.array([
-            data.Age, data.Systolic_BP, data.Diastolic_BP, 
-            data.Blood_Sugar, data.Body_Temperature, data.Heart_Rate
-        ]).reshape(1, -1)
+        # Convert named features to ordered array
+        input_dict = data.dict()
+        features = np.array([[input_dict[feature] for feature in FEATURE_NAMES]])
 
-        # Apply scaling
-        features_scaled = scaler.transform(features)
+        # Apply scaling if scaler exists
+        features_scaled = features if scaler is None else scaler.transform(features)
 
         # Make prediction
         numeric_prediction = model.predict(features_scaled)[0]
 
-        # Convert numeric prediction to human-readable label
+        # Convert numeric prediction to label
         readable_prediction = CLASS_MAPPING.get(numeric_prediction, "Unknown Risk Level")
 
         return {"prediction": readable_prediction}
