@@ -1,19 +1,12 @@
 import pandas as pd
-import numpy as np
 import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 def preprocess_data(df):
-    """
-    Cleans, encodes, and scales the dataset.
+    """Cleans, encodes, and scales the dataset."""
     
-    Args:
-        df (pd.DataFrame): Raw dataset.
-
-    Returns:
-        tuple: Scaled training, validation, and test sets (X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test).
-    """
+    # Drop duplicates
     df = df.drop_duplicates().copy()
 
     # Fix incorrect HeartRate value
@@ -21,7 +14,7 @@ def preprocess_data(df):
 
     # Encode categorical labels safely
     df["RiskLevel"] = df["RiskLevel"].replace({"high risk": 2, "mid risk": 1, "low risk": 0})
-    df = df.infer_objects(copy=False)  
+    df = df.infer_objects(copy=False)  # Ensure proper dtype handling
 
     # Split features and target
     X = df.drop(columns=["RiskLevel"])
@@ -40,4 +33,4 @@ def preprocess_data(df):
     # Save the scaler
     joblib.dump(scaler, "scaler.pkl")
 
-    return X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test
+    return X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test, X.columns.tolist()
