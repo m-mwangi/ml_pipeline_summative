@@ -29,7 +29,7 @@ def train_and_evaluate(X_train, X_val, y_train, y_val):
     val_acc = accuracy_score(y_val, y_val_pred)
 
     # Save the best model
-    joblib.dump(best_xgb, "xgb_maternal_health.json")
+    joblib.dump(best_xgb, "xgb_maternal_health.pkl")
 
     print(f"✅ Best Validation Accuracy: {val_acc:.4f}")
     print("\n📊 Classification Report:\n", classification_report(y_val, y_val_pred))
