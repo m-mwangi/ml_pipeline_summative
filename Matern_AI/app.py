@@ -96,11 +96,11 @@ scaler = joblib.load(scaler_path)
 # Define input data model for prediction
 class PredictionRequest(BaseModel):
     Age: float
-    Systolic_BP: float
-    Diastolic_BP: float
-    Blood_Sugar: float
-    Body_Temperature: float
-    Heart_Rate: float
+    SystolicBP: float
+    DiastolicBP: float
+    BS: float
+    BodyTemp: float
+    HeartRate: float
 
 # Root route for the welcome message
 @app.get("/")
